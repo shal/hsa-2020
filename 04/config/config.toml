@@ -1,0 +1,8 @@
+[store]
+username = "root"
+password = "password"
+database = "ex04"
+
+[[store.nodes]]
+host = "127.0.0.1"
+port = 27017

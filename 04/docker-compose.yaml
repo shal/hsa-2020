@@ -1,0 +1,40 @@
+version: '3.1'
+
+services:
+  mongo:
+    image: mongo:4.2
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "password"
+    volumes:
+      - mongodb-data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_MONGODB_ADMINUSERNAME: "root"
+      ME_CONFIG_MONGODB_ADMINPASSWORD: "password"
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - 8080:8080
+    volumes:
+      - ./config/dev.toml:/app/config/config.toml
+
+  siege:
+    image: yokogawa/siege
+    volumes:
+      - ./urls.txt:/tmp/urls.txt
+    command: -b -r1000 -c10 -f /tmp/urls.txt
+
+volumes:
+  mongodb-data: {}
