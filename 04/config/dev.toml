@@ -6,3 +6,8 @@ database = "ex04"
 [[store.nodes]]
 host = "mongo"
 port = 27017
+
+[cache]
+host = "redis"
+port = 6379
+database = 0

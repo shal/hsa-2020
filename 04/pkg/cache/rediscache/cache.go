@@ -20,8 +20,8 @@ func New(ctx context.Context, conf config.Cache) (*Cache, error) {
 	pool := redis.Pool{
 		MaxIdle:   50,
 		MaxActive: 10000,
-		Dial: func() (redis.Conn, error) {
-			conn, err := redis.Dial("tcp", conf.Addr(),
+		DialContext: func(ctx context.Context) (redis.Conn, error) {
+			conn, err := redis.DialContext(ctx, "tcp", conf.Addr(),
 				redis.DialPassword(conf.Password),
 				redis.DialDatabase(conf.Database),
 				redis.DialConnectTimeout(10*time.Second),

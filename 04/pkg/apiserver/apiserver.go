@@ -3,12 +3,18 @@ package apiserver
 import (
 	"encoding/json"
 	"github.com/shal/hsa-2020/04/pkg/cache"
+	"log"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/shal/hsa-2020/04/pkg/model"
 	"github.com/shal/hsa-2020/04/pkg/store"
+)
+
+const (
+	CacheEnabled = true
 )
 
 type server struct {
@@ -24,6 +30,7 @@ func New(store store.Store, cache cache.Cache) *server {
 		cache:  cache,
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	s.configureRoutes()
 
 	return &s
@@ -42,17 +49,57 @@ func (s *server) configureRoutes() {
 func (s *server) Transactions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		transactions, err := s.store.Transaction().All(r.Context())
-		if err != nil {
-			http.Error(w, "system.unhealthy", http.StatusInternalServerError)
-			return
-		}
+		if CacheEnabled {
+			result, err := s.cache.Transaction().Get(r.Context())
+			if err == cache.ErrNotFound {
+				transactions, err := s.store.Transaction().All(r.Context())
+				if err != nil {
+					http.Error(w, "system.db_failed", http.StatusInternalServerError)
+					return
+				}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(transactions); err != nil {
-			w.Header().Del("Content-Type")
-			http.Error(w, "system.unhealthy", http.StatusInternalServerError)
-			return
+				result = &model.Result{}
+				for _, tx := range transactions {
+					result.TotalCount++
+					result.TotalSum += tx.Amount
+				}
+
+				err = s.cache.Transaction().Set(r.Context(), result)
+				if err != nil {
+					http.Error(w, "system.cache_failed_set", http.StatusInternalServerError)
+					return
+				}
+			} else if err != nil {
+				log.Println(err)
+				http.Error(w, "system.cache_failed_get", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				w.Header().Del("Content-Type")
+				http.Error(w, "system.unhealthy", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			transactions, err := s.store.Transaction().All(r.Context())
+			if err != nil {
+				http.Error(w, "system.db_failed", http.StatusInternalServerError)
+				return
+			}
+
+			var result model.Result
+			for _, tx := range transactions {
+				result.TotalCount++
+				result.TotalSum += tx.Amount
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				w.Header().Del("Content-Type")
+				http.Error(w, "system.unhealthy", http.StatusInternalServerError)
+				return
+			}
 		}
 	default:
 		http.Error(w, "request.not_allowed", http.StatusMethodNotAllowed)
@@ -63,15 +110,11 @@ func (s *server) Transaction(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		var transaction model.Transaction
-		err := json.NewDecoder(r.Body).Decode(&transaction)
-		if err != nil {
-			http.Error(w, "request.invalid_body", http.StatusBadRequest)
-			return
-		}
 
+		transaction.Amount = rand.Float64() * 10
 		transaction.Time = time.Now()
 
-		err = s.store.Transaction().Create(r.Context(), &transaction)
+		err := s.store.Transaction().Create(r.Context(), &transaction)
 		if err != nil {
 			http.Error(w, "system.unhealthy", http.StatusInternalServerError)
 			return

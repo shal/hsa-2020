@@ -7,6 +7,6 @@ import (
 )
 
 type TransactionCache interface {
-	Set(ctx context.Context, transaction *model.Transaction) error
-	Get(ctx context.Context, id string) (*model.Transaction, error)
+	Set(ctx context.Context, result *model.Result) error
+	Get(ctx context.Context) (*model.Result, error)
 }

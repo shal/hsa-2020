@@ -11,3 +11,8 @@ type Transaction struct {
 	Amount float64            `json:"amount" bson:"amount"`
 	Time   time.Time          `json:"time" bson:"time"`
 }
+
+type Result struct {
+	TotalCount int64   `json:"total_count"`
+	TotalSum   float64 `json:"total_sum"`
+}
