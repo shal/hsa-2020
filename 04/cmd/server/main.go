@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/shal/hsa-2020/04/pkg/cache/rediscache"
 	"log"
 	"net/http"
 	"strconv"
@@ -31,7 +32,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	srv := apiserver.New(store)
+	cache, err := rediscache.New(context.Background(), conf.Cache)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	srv := apiserver.New(store, cache)
 
 	addr := ":" + strconv.Itoa(port)
 	log.Printf("Listening on %s...", addr)

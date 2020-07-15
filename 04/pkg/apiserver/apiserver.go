@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"encoding/json"
+	"github.com/shal/hsa-2020/04/pkg/cache"
 	"net/http"
 	"strings"
 	"time"
@@ -13,12 +14,14 @@ import (
 type server struct {
 	router *http.ServeMux
 	store  store.Store
+	cache  cache.Cache
 }
 
-func New(store store.Store) *server {
+func New(store store.Store, cache cache.Cache) *server {
 	s := server{
 		router: http.NewServeMux(),
 		store:  store,
+		cache:  cache,
 	}
 
 	s.configureRoutes()
@@ -87,7 +90,9 @@ func (s *server) Transaction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		transaction, err := s.store.Transaction().FindByID(r.Context(), p[5])
+		id := p[5]
+
+		transaction, err := s.store.Transaction().FindByID(r.Context(), id)
 		if err != nil {
 			http.Error(w, "system.unhealthy", http.StatusInternalServerError)
 			return
