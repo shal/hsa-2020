@@ -3,10 +3,13 @@ package rediscache
 import (
 	"context"
 	"encoding/json"
-	"github.com/shal/hsa-2020/04/pkg/cache"
+	"log"
+	"math/rand"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 
+	"github.com/shal/hsa-2020/04/pkg/cache"
 	"github.com/shal/hsa-2020/04/pkg/model"
 )
 
@@ -31,8 +34,22 @@ func (r *TransactionCache) Set(ctx context.Context, result *model.Result) error 
 		return err
 	}
 
-	_, err = conn.Do("SET", "result", data, "EX", 30)
+	err = conn.Send("SET", "result", data, "EX", 30)
 	if err != nil {
+		return err
+	}
+
+	resultTime := time.Now().Add(30 * time.Second).Format(time.RFC3339)
+	err = conn.Send("SET", "result_time", resultTime, "EX", 40)
+	if err != nil {
+		return err
+	}
+
+	if err := conn.Flush(); err != nil {
+		return err
+	}
+
+	if _, err := conn.Receive(); err != nil {
 		return err
 	}
 
@@ -43,6 +60,31 @@ func (r *TransactionCache) Get(ctx context.Context) (*model.Result, error) {
 	conn, err := r.cache.pool.DialContext(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	timeData, err := redis.String(conn.Do("GET", "result_time"))
+	if err == redis.ErrNil {
+		return nil, cache.ErrNotFound
+	}
+
+	resultTime, err := time.Parse(time.RFC3339, timeData)
+	if err == redis.ErrNil {
+		return nil, cache.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Probabilistic cache flushing.
+	left := resultTime.Sub(time.Now())
+	if left < 0 {
+		return nil, cache.ErrNotFound
+	} else if left < time.Second {
+		if rand.Float64() <= 1.0-left.Seconds() {
+			log.Println("dispatched update")
+			return nil, cache.ErrNotFound
+		}
 	}
 
 	data, err := redis.Bytes(conn.Do("GET", "result"))
