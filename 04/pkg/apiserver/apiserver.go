@@ -2,32 +2,31 @@ package apiserver
 
 import (
 	"encoding/json"
-	"github.com/shal/hsa-2020/04/pkg/cache"
 	"log"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/shal/hsa-2020/04/pkg/cache"
+
 	"github.com/shal/hsa-2020/04/pkg/model"
 	"github.com/shal/hsa-2020/04/pkg/store"
 )
 
-const (
-	CacheEnabled = true
-)
-
 type server struct {
-	router *http.ServeMux
-	store  store.Store
-	cache  cache.Cache
+	router  *http.ServeMux
+	store   store.Store
+	cache   cache.Cache
+	enabled bool
 }
 
-func New(store store.Store, cache cache.Cache) *server {
+func New(store store.Store, cache cache.Cache, enabled bool) *server {
 	s := server{
-		router: http.NewServeMux(),
-		store:  store,
-		cache:  cache,
+		router:  http.NewServeMux(),
+		store:   store,
+		cache:   cache,
+		enabled: enabled,
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -46,10 +45,11 @@ func (s *server) configureRoutes() {
 	s.router.HandleFunc("/api/v1/04/transaction", s.Transaction)
 }
 
+// TODO: refactor!
 func (s *server) Transactions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		if CacheEnabled {
+		if s.enabled {
 			result, err := s.cache.Transaction().Get(r.Context())
 			if err == cache.ErrNotFound {
 				transactions, err := s.store.Transaction().All(r.Context())

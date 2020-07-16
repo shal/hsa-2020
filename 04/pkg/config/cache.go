@@ -8,6 +8,7 @@ type Cache struct {
 	Port     int    `toml:"port"`
 	Password string `toml:"password"`
 	Database int    `toml:"database"`
+	Ebabled  bool   `toml:"enabled"`
 }
 
 // Addr returns cache address in {host}:{port} format.

@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/shal/hsa-2020/04/pkg/cache/rediscache"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/shal/hsa-2020/04/pkg/cache/rediscache"
 
 	"github.com/shal/hsa-2020/04/pkg/apiserver"
 	"github.com/shal/hsa-2020/04/pkg/config"
@@ -32,13 +33,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cache, err := rediscache.New(context.Background(), conf.Cache)
-	if err != nil {
-		log.Fatal(err)
+	var cache *rediscache.Cache
+	if conf.Cache.Ebabled {
+		log.Println("Caching enabled")
+
+		cache, err = rediscache.New(context.Background(), conf.Cache)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	srv := apiserver.New(store, cache)
-
+	srv := apiserver.New(store, cache, false)
 	addr := ":" + strconv.Itoa(port)
 	log.Printf("Listening on %s...", addr)
 	if err := http.ListenAndServe(addr, srv); err != nil {
