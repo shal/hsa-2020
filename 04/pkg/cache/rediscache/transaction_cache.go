@@ -82,9 +82,10 @@ func (r *TransactionCache) Get(ctx context.Context) (*model.Result, error) {
 		return nil, cache.ErrNotFound
 	} else if left < time.Second {
 		if rand.Float64() <= 1.0-left.Seconds() {
-			log.Println("dispatched update")
+
 			return nil, cache.ErrNotFound
 		}
+		log.Println("not dispatched update")
 	}
 
 	data, err := redis.Bytes(conn.Do("GET", "result"))

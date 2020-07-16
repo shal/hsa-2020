@@ -33,7 +33,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var cache *rediscache.Cache
+	var cache *rediscache.Cache = nil
 	if conf.Cache.Ebabled {
 		log.Println("Caching enabled")
 
@@ -43,7 +43,7 @@ func main() {
 		}
 	}
 
-	srv := apiserver.New(store, cache, false)
+	srv := apiserver.New(store, cache, conf.Cache.Ebabled)
 	addr := ":" + strconv.Itoa(port)
 	log.Printf("Listening on %s...", addr)
 	if err := http.ListenAndServe(addr, srv); err != nil {
