@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  cats:
+    image: nginx
+    restart: always
+    volumes:
+    - ./assets:/usr/share/nginx/html
+    ports:
+    - 8080:80
+
+  nginx:
+    image: nginx:perl
+    restart: always
+    volumes:
+    - ./config/nginx.conf:/etc/nginx/nginx.conf
+    - ./cache:/var/cache/nginx
+    - ./lib:/etc/nginx/perl/lib
+    command: |
+      nginx -g 'daemon off; load_module /etc/nginx/modules/ngx_http_perl_module-debug.so;'
+    ports:
+    - 8081:80
